@@ -18,11 +18,11 @@
 #define STRING_BUFFER_SIZE 256
 #define true 1
 #define false 0
-#define flagFreeXor 1
-#define flagFreeNor 2
+#define flagXor 1
+#define flagXnor 2
 #define flagNone 0
-#define dispFreeXor "freeXor"
-#define dispFreeNor "freeNor"
+#define dispXor "Xor"
+#define dispXnor "Xnor"
 #define dispNone "None"
 
 
@@ -50,6 +50,8 @@ typedef struct gate{
 typedef struct cycle{
 	unsigned int amountOfPlayers;
 	unsigned int amountOfGates;
+	Gate  ** specialGates;
+	Player outputbits;
 	Gate * gateArray;
 	Player ** playerArray;
 } Cycle;
@@ -122,5 +124,7 @@ void removeSpacesAndTubs(char* source);
  * Attention: if you forget use this function after done with circle, parts of it will remain in the memory until your program will terminated.
  */
 void freeCircle(Cycle * c);
+
+Gate ** specialGatesCollector(Gate * GatesArray, const unsigned int arraySize, const unsigned int specialAmount);
 
 #endif /* SECCOMPMULTIPARTY_H_ */

@@ -24,6 +24,8 @@ Cycle * readCycleFromFile(char * path)
 	unsigned int playerCounter = 0;
 	unsigned int gateCounter = 0;
 
+	unsigned int specialGatesAmount = 0;
+
 	unsigned int i;
 
 	unsigned int tempPlayerID;
@@ -33,6 +35,9 @@ Cycle * readCycleFromFile(char * path)
 	unsigned int tempOutput;
 	unsigned int tempTTable;
 	unsigned int tempStatus;
+
+	unsigned int gotOutputsBits = false;
+
 
 	Cycle * cycleTR;
 	char lineBuff[STRING_BUFFER_SIZE];
@@ -97,14 +102,43 @@ Cycle * readCycleFromFile(char * path)
 				printf("Error: Player header expected. e.g P1 32");
 				return NULL;
 			}
-		}else{ //if done with Players, lets collect gates
-			if ((tempStatus = sscanf(lineBuff,"%u %u %u %u %s\n",&tempInput1,&tempInput2,&tempOutput,&tempTTable,lineBuffCopy)) >=4){
-				if(tempStatus >= 5){
+
+		}else if(!gotOutputsBits){
+			gotOutputsBits = true;
+			if (sscanf(lineBuff,"Out %u",&tempAmountOfBits) == 1){
+				cycleTR -> outputbits.playerBitAmount = tempAmountOfBits;
+				cycleTR -> outputbits.playerBitArray = (unsigned int*) malloc(sizeof(unsigned int)*tempAmountOfBits);
+				for (i = 0; i < cycleTR -> outputbits.playerBitAmount; ++i) {
+					if (!fgets(lineBuff, STRING_BUFFER_SIZE, cycleFile)) { printf("Error: in line %u bit serial expected... but the file is ended.", lineCount); return NULL;}
+					lineCount++;
+					if(sscanf(lineBuff,"%u",&cycleTR -> outputbits.playerBitArray[i]) != 1) {printf("Error: in line %u expected for bit serial... ", lineCount); return NULL;}
+				}
+
+			}else{
+				printf("Error: Outputs header expected. e.g O 32");
+				return NULL;
+			}
+
+
+
+
+		}else{//if done with Players, lets collect gates
+			if ((tempStatus = sscanf(lineBuff,"%u %u %u %u %s\n",&tempInput1,&tempInput2,&tempOutput,&tempTTable)) >=4){
+
+				/** if(tempStatus >= 5){
 					if(strcmp(lineBuffCopy,dispFreeNor) == 0) tempStatus = flagFreeNor;
 					else if(strcmp(lineBuffCopy,dispFreeXor) == 0) tempStatus = flagFreeXor;
 					else  tempStatus = flagNone;
+				}else tempStatus = flagNone; **/
 
+				if(tempTTable == 110) {
+					tempStatus = flagXor;
+					specialGatesAmount++;
+				}else if(tempTTable == 1001){
+					tempStatus = flagXnor;
+					specialGatesAmount++;
 				}else tempStatus = flagNone;
+
 				cycleTR-> gateArray[gateCounter] = GateCreator(tempInput1, tempInput2, tempOutput, tempTTable, tempStatus);
 
 
@@ -123,15 +157,15 @@ Cycle * readCycleFromFile(char * path)
 		return NULL;
 	}
 
-
-
+	cycleTR -> specialGates = specialGatesCollector(cycleTR->gateArray,gateAmount,specialGatesAmount);
+	printf("test: %u",specialGatesAmount);
 	return cycleTR;
 }
 
 
 void printCycle(const Cycle * c)
 {
-	char * flagsFriendlyNames[] = {"",dispFreeXor,dispFreeNor};
+	char * flagsFriendlyNames[] = {"",dispXor,dispXnor};
 	int p,i;
 	if (c == NULL) {
 		printf("Error: got NULL...\n");
@@ -142,6 +176,10 @@ void printCycle(const Cycle * c)
 			for (i = 0; i < c->playerArray[p]->playerBitAmount; ++i) {
 				printf("%u\n",c->playerArray[p]->playerBitArray[i]);
 			}
+		}
+		printf("Out %u\n",c->outputbits.playerBitAmount);
+		for (i = 0; i < c->outputbits.playerBitAmount; ++i) {
+			printf("%u\n",c->outputbits.playerBitArray[i]);
 		}
 		for(i=0;i<c->amountOfGates;i++){
 			printf("%u %u %u %u %s\n",c->gateArray[i].inputBit1,c->gateArray[i].inputBit2,c->gateArray[i].outputBit,c->gateArray[i].truthTable,flagsFriendlyNames[c->gateArray[i].flags]);
@@ -176,4 +214,20 @@ void freeCircle(Cycle * c)
 	free(c->playerArray);
 	free(c->gateArray);
 	free(c);
+}
+
+Gate ** specialGatesCollector(Gate * GatesArray, const unsigned int arraySize, const unsigned int specialGatesAmount){
+	unsigned int i;
+	unsigned int count = 0;
+	Gate ** sarray = (Gate**) malloc(sizeof (Gate*) * specialGatesAmount);
+	for (i = 0; i < arraySize; ++i) {
+		if(GatesArray[i].flags != flagNone){
+			sarray[count++] = &GatesArray[i];
+		}
+		if(count>specialGatesAmount){
+			printf("Error: specialGatesCollector - count>specialGatesAmount");
+			return NULL;
+		}
+	}
+	return sarray;
 }
