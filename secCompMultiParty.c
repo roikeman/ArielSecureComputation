@@ -8,13 +8,39 @@
 #include <string.h>
 #include <stdlib.h>
 #include "secCompMultiParty.h"
+#include <emmintrin.h>
 
-Gate GateCreator(const unsigned int inputBit1, const unsigned int inputBit2, const unsigned int outputBit, const unsigned int TTable, const unsigned int flags)
+Gate GateCreator(const unsigned int inputBit1, const unsigned int inputBit2, const unsigned int outputBit, TruthTable TTable, const unsigned int flags)
 {
-	Gate g = {.inputBit1 = inputBit1, .inputBit2 = inputBit2, .outputBit = outputBit, .truthTable = TTable, .flags = flags};
+	Gate g;
+	g.inputBit1 = inputBit1;
+	g.inputBit2 = inputBit2;
+	g.outputBit = outputBit;
+	g.truthTable = TTable;
+	g.flags = flags;
 	return g;
 }
 
+inline unsigned int charToBooleanValue(char v){
+	if (v == '1') {
+		return true;
+	}
+	return false;
+}
+
+
+TruthTable createTruthTablefFromChars(char FF, char FT, char TF, char TT){
+	TruthTable TrueT;
+	TrueT.FF = charToBooleanValue(FF);
+	TrueT.FT = charToBooleanValue(FT);
+	TrueT.TF = charToBooleanValue(TF);
+	TrueT.TT = charToBooleanValue(TT);
+	TrueT.Y1 = TrueT.FF;
+	TrueT.Y2 = TrueT.FF ^ TrueT.TF;
+	TrueT.Y3 = TrueT.FF ^ TrueT.FT;
+	TrueT.Y4 = TrueT.FF ^ TrueT.FT ^ TrueT.TF ^ TrueT.TT;
+	return TrueT;
+}
 
 Cycle * readCycleFromFile(char * path)
 {
@@ -33,8 +59,14 @@ Cycle * readCycleFromFile(char * path)
 	unsigned int tempInput1;
 	unsigned int tempInput2;
 	unsigned int tempOutput;
-	unsigned int tempTTable;
 	unsigned int tempStatus;
+
+	char tempTT;
+	char tempFT;
+	char tempTF;
+	char tempFF;
+
+	TruthTable tempTruthTable;
 
 	unsigned int gotOutputsBits = false;
 
@@ -122,8 +154,10 @@ Cycle * readCycleFromFile(char * path)
 
 
 
-		}else{//if done with Players, lets collect gates
-			if ((tempStatus = sscanf(lineBuff,"%u %u %u %u %s\n",&tempInput1,&tempInput2,&tempOutput,&tempTTable)) >=4){
+		}else{//if done with Players and outputs bits, lets collect gates
+			if ((tempStatus = sscanf(lineBuff,"%u %u %u %c%c%c%c\n",&tempInput1, &tempInput2, &tempOutput, &tempFF, &tempFT, &tempTF, &tempTT)) >=7){
+
+				tempStatus = flagNone;
 
 				/** if(tempStatus >= 5){
 					if(strcmp(lineBuffCopy,dispFreeNor) == 0) tempStatus = flagFreeNor;
@@ -131,15 +165,17 @@ Cycle * readCycleFromFile(char * path)
 					else  tempStatus = flagNone;
 				}else tempStatus = flagNone; **/
 
-				if(tempTTable == 110) {
+				/**if(tempTTable == 110) {
 					tempStatus = flagXor;
 					specialGatesAmount++;
 				}else if(tempTTable == 1001){
 					tempStatus = flagXnor;
 					specialGatesAmount++;
-				}else tempStatus = flagNone;
+				}else tempStatus = flagNone;*/
 
-				cycleTR-> gateArray[gateCounter] = GateCreator(tempInput1, tempInput2, tempOutput, tempTTable, tempStatus);
+				tempTruthTable = createTruthTablefFromChars(tempFF,tempFT,tempTF,tempTT);
+
+				cycleTR-> gateArray[gateCounter] = GateCreator(tempInput1, tempInput2, tempOutput, tempTruthTable , tempStatus);
 
 
 				gateCounter++;
@@ -162,9 +198,26 @@ Cycle * readCycleFromFile(char * path)
 	return cycleTR;
 }
 
+char * truthTableToString(TruthTable TTB, char * charbuff){
+	unsigned int count = 0;
+	if(TTB.FF) charbuff[count++] = '1'; else charbuff[count++] = '0';
+	if(TTB.FT) charbuff[count++] = '1'; else charbuff[count++] = '0';
+	if(TTB.TF) charbuff[count++] = '1'; else charbuff[count++] = '0';
+	if(TTB.TT) charbuff[count++] = '1'; else charbuff[count++] = '0';
+
+	charbuff[count++] = ' ';
+	if(TTB.Y1) charbuff[count++] = '1'; else charbuff[count++] = '0';
+	if(TTB.Y2) charbuff[count++] = '1'; else charbuff[count++] = '0';
+	if(TTB.Y3) charbuff[count++] = '1'; else charbuff[count++] = '0';
+	if(TTB.Y4) charbuff[count++] = '1'; else charbuff[count++] = '0';
+
+	charbuff[count++] = '\0';
+	return charbuff;
+}
 
 void printCycle(const Cycle * c)
 {
+	char trueTBuffer[30];
 	char * flagsFriendlyNames[] = {"",dispXor,dispXnor};
 	int p,i;
 	if (c == NULL) {
@@ -182,10 +235,13 @@ void printCycle(const Cycle * c)
 			printf("%u\n",c->outputbits.playerBitArray[i]);
 		}
 		for(i=0;i<c->amountOfGates;i++){
-			printf("%u %u %u %u %s\n",c->gateArray[i].inputBit1,c->gateArray[i].inputBit2,c->gateArray[i].outputBit,c->gateArray[i].truthTable,flagsFriendlyNames[c->gateArray[i].flags]);
+			printf("%u %u %u %s %s\n",c->gateArray[i].inputBit1,c->gateArray[i].inputBit2,c->gateArray[i].outputBit,
+					truthTableToString(c->gateArray[i].truthTable,trueTBuffer),flagsFriendlyNames[c->gateArray[i].flags]);
 		}
 	}
 }
+
+
 
 void removeSpacesAndTubs(char* source)
 {
@@ -231,3 +287,17 @@ Gate ** specialGatesCollector(Gate * GatesArray, const unsigned int arraySize, c
 	}
 	return sarray;
 }
+
+
+
+
+
+__m128i getRandom128(){
+	__m128i rndVec;
+	  _mm
+	  return rndVec;
+}
+
+//unsigned int truthTableConvert()
+
+

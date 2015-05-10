@@ -39,11 +39,23 @@ typedef struct player{
  * This struct present one gate with two inputs bit, one output bit and a Truth table.
  *
  */
+typedef struct truthTable{
+	unsigned int FF : 1;
+	unsigned int FT : 1;
+	unsigned int TF : 1;
+	unsigned int TT : 1;
+	unsigned int Y1 : 1;
+	unsigned int Y2 : 1;
+	unsigned int Y3 : 1;
+	unsigned int Y4 : 1;
+} TruthTable;
+
+
 typedef struct gate{
 	unsigned int inputBit1;
 	unsigned int inputBit2;
 	unsigned int outputBit;
-	unsigned int truthTable; // : 4;
+	TruthTable truthTable ;
 	unsigned int flags : 2; //limited for 2 bits
 } Gate;
 
@@ -106,7 +118,7 @@ extern Cycle * readCycleFromFile(char path[]);
 /*
  * private function that crate gates structs. it used in readCycleFromFile function.
  */
-Gate GateCreator(const unsigned int inputBit1, const unsigned int inputBit2, const unsigned int outputBit, const unsigned int TTable, const unsigned int flags);
+Gate GateCreator(const unsigned int inputBit1, const unsigned int inputBit2, const unsigned int outputBit, const TruthTable TTable, const unsigned int flags);
 
 /*
  * this function print full given Cycle it cycle file format.
