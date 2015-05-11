@@ -1,0 +1,21 @@
+ 	# if you have notes you can write it start with '#'... and we just ignore that lines.
+6 3 12
+	# Players:
+P0 2
+0
+1
+P1 2
+2
+3
+P2 2
+4
+5
+Out 1
+6
+ 	# Gates:
+0 2 7 0001
+1 4 8 0001
+3 5 9 0001
+7 8 10 0110
+8 9 11 0110
+10 11 6 0001
